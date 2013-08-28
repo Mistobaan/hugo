@@ -85,6 +85,7 @@ func (s *Site) prepTemplates() {
 	s.Tmpl = NewTemplate()
 	s.Tmpl.LoadTemplates(s.absLayoutDir())
 }
+
 func (s *Site) addTemplate(name, data string) error {
 	return s.Tmpl.AddTemplate(name, data)
 }
@@ -573,7 +574,7 @@ func (s *Site) NewNode() Node {
 
 func (s *Site) RenderThing(d interface{}, layout string) (*bytes.Buffer, error) {
 	if s.Tmpl.Lookup(layout) == nil {
-		return nil, errors.New("Layout not found")
+		return nil, fmt.Errorf("Layout with name %s not found", layout)
 	}
 	buffer := new(bytes.Buffer)
 	err := s.Tmpl.ExecuteTemplate(buffer, layout, d)

@@ -1,11 +1,13 @@
 package hugolib
 
 import (
+	"fmt"
+	"github.com/eknkc/amber"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // HTML encapsulates a known safe HTML document fragment.
@@ -61,6 +63,14 @@ func (t *GoHtmlTemplate) AddTemplate(name, tmpl string) error {
 	return err
 }
 
+func (t *GoHtmlTemplate) AddTemplateFile(name, path string) error {
+	_, err := t.New(name).ParseFiles(path)
+	if err != nil {
+		t.errors = append(t.errors, &templateErr{name: name, err: err})
+	}
+	return err
+}
+
 func (t *GoHtmlTemplate) generateTemplateNameFrom(base, path string) string {
 	return filepath.ToSlash(path[len(base)+1:])
 }
@@ -85,11 +95,27 @@ func (t *GoHtmlTemplate) LoadTemplates(absPath string) {
 			if ignoreDotFile(path) {
 				return nil
 			}
-			filetext, err := ioutil.ReadFile(path)
-			if err != nil {
-				return err
+
+			tmplName := t.generateTemplateNameFrom(absPath, path)
+
+			if strings.HasSuffix(path, ".amber") {
+				compiler := amber.New()
+				// Parse the input file
+				if err := compiler.ParseFile(path); err != nil {
+					return nil
+				}
+
+				// Compile input file to Go template
+				if tpl, err := compiler.CompileWithTemplate(t.New(tmplName)); err != nil {
+					PrintErr("Could not compile amber file: "+path, err)
+					return err
+				} else {
+					tpl.Execute(os.Stdout, nil)
+				}
+
+			} else {
+				t.AddTemplateFile(tmplName, path)
 			}
-			t.AddTemplate(t.generateTemplateNameFrom(absPath, path), string(filetext))
 		}
 		return nil
 	}
