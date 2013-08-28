@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kr/pretty"
-	"html/template"
 	"os"
 	"os/exec"
 	"reflect"
@@ -165,11 +164,11 @@ func Urlize(url string) string {
 	return Sanitize(strings.ToLower(strings.Replace(strings.TrimSpace(url), " ", "-", -1)))
 }
 
-func AbsUrl(url string, base string) template.HTML {
+func AbsUrl(url string, base string) HTML {
 	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
-		return template.HTML(url)
+		return HTML(url)
 	}
-	return template.HTML(MakePermalink(base, url))
+	return HTML(MakePermalink(base, url))
 }
 
 func Gt(a interface{}, b interface{}) bool {
@@ -334,7 +333,7 @@ func MakePermalink(domain string, path string) string {
 }
 
 func getSummaryString(content []byte) ([]byte, bool) {
-	if (bytes.Contains(content, summaryDivider)) {
+	if bytes.Contains(content, summaryDivider) {
 		return bytes.Split(content, summaryDivider)[0], false
 	} else {
 		plainContent := StripHTML(StripShortcodes(string(content)))
