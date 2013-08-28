@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/nitro"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,6 +81,14 @@ func (s *Site) Analyze() {
 	s.checkDescriptions()
 }
 
+func (s *Site) prepTemplates() {
+	s.Tmpl = NewTemplate()
+	s.Tmpl.LoadTemplates(s.absLayoutDir())
+}
+func (s *Site) addTemplate(name, data string) error {
+	return s.Tmpl.AddTemplate(name, data)
+}
+
 func (s *Site) Process() (err error) {
 	s.initialize()
 	s.prepTemplates()
@@ -137,37 +144,6 @@ func (s *Site) checkDescriptions() {
 		}
 	}
 }
-
-func (s *Site) prepTemplates() {
-	s.Tmpl = NewTemplate()
-	s.primeTemplates()
-	s.loadTemplates()
-}
-
-func (s *Site) loadTemplates() {
-	walker := func(path string, fi os.FileInfo, err error) error {
-		if err != nil {
-			PrintErr("Walker: ", err)
-			return nil
-		}
-
-		if !fi.IsDir() {
-			if ignoreDotFile(path) {
-				return nil
-			}
-			filetext, err := ioutil.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			s.addTemplate(s.generateTemplateNameFrom(path), string(filetext))
-		}
-		return nil
-	}
-
-	filepath.Walk(s.absLayoutDir(), walker)
-}
-
-
 
 func (s *Site) initialize() {
 	s.checkDirectories()

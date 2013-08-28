@@ -1,8 +1,8 @@
 package hugolib
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -36,7 +36,6 @@ func TestDegenerateRenderThingMissingTemplate(t *testing.T) {
 func TestPrimeTemplates(t *testing.T) {
 	s := new(Site)
 	s.prepTemplates()
-	s.primeTemplates()
 	if s.Tmpl.Lookup("alias") == nil {
 		t.Fatalf("alias template not created.")
 	}
@@ -158,4 +157,5 @@ func TestRenderThingOrDefault(t *testing.T) {
 		if string(html.Bytes()) != test.expected {
 			t.Errorf("Content does not match.  Expected '%s', got '%s'", test.expected, html)
 		}
-	}}
+	}
+}

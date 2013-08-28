@@ -1,9 +1,11 @@
 package hugolib
 
 import (
-	"path/filepath"
 	"html/template"
 	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 )
 
 // HTML encapsulates a known safe HTML document fragment.
@@ -17,17 +19,26 @@ type Template interface {
 	Lookup(name string) *template.Template
 	Templates() []*template.Template
 	New(name string) *template.Template
+	LoadTemplates(absPath string)
+	AddTemplate(name, tmpl string) error
 }
 
 type URL template.URL
 
-type GoHtmlTemplate struct {
-	template.Template
+type templateErr struct {
+	name string
+	err  error
 }
 
-func NewTemplate() *GoHtmlTemplate {
+type GoHtmlTemplate struct {
+	template.Template
+	errors []*templateErr
+}
+
+func NewTemplate() Template {
 	var templates = &GoHtmlTemplate{
 		Template: *template.New(""),
+		errors:   make([]*templateErr, 0),
 	}
 
 	funcMap := template.FuncMap{
@@ -38,24 +49,50 @@ func NewTemplate() *GoHtmlTemplate {
 	}
 
 	templates.Funcs(funcMap)
+	templates.primeTemplates()
 	return templates
 }
 
-func (s *Site) addTemplate(name, tmpl string) (err error) {
-	_, err = s.Tmpl.New(name).Parse(tmpl)
-	return
+func (t *GoHtmlTemplate) AddTemplate(name, tmpl string) error {
+	_, err := t.New(name).Parse(tmpl)
+	if err != nil {
+		t.errors = append(t.errors, &templateErr{name: name, err: err})
+	}
+	return err
 }
 
-func (s *Site) generateTemplateNameFrom(path string) (name string) {
-	name = filepath.ToSlash(path[len(s.absLayoutDir())+1:])
-	return
+func (t *GoHtmlTemplate) generateTemplateNameFrom(base, path string) string {
+	return filepath.ToSlash(path[len(base)+1:])
 }
 
-func (s *Site) primeTemplates() {
+func (t *GoHtmlTemplate) primeTemplates() {
 	alias := "<!DOCTYPE html>\n <html>\n <head>\n <link rel=\"canonical\" href=\"{{ .Permalink }}\"/>\n <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n <meta http-equiv=\"refresh\" content=\"0;url={{ .Permalink }}\" />\n </head>\n </html>"
 	alias_xhtml := "<!DOCTYPE html>\n <html xmlns=\"http://www.w3.org/1999/xhtml\">\n <head>\n <link rel=\"canonical\" href=\"{{ .Permalink }}\"/>\n <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n <meta http-equiv=\"refresh\" content=\"0;url={{ .Permalink }}\" />\n </head>\n </html>"
 
-	s.addTemplate("alias", alias)
-	s.addTemplate("alias-xhtml", alias_xhtml)
+	t.AddTemplate("alias", alias)
+	t.AddTemplate("alias-xhtml", alias_xhtml)
 
+}
+
+func (t *GoHtmlTemplate) LoadTemplates(absPath string) {
+	walker := func(path string, fi os.FileInfo, err error) error {
+		if err != nil {
+			PrintErr("Walker: ", err)
+			return nil
+		}
+
+		if !fi.IsDir() {
+			if ignoreDotFile(path) {
+				return nil
+			}
+			filetext, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			t.AddTemplate(t.generateTemplateNameFrom(absPath, path), string(filetext))
+		}
+		return nil
+	}
+
+	filepath.Walk(absPath, walker)
 }
